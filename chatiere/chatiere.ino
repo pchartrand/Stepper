@@ -1,8 +1,11 @@
 
 #define IN1  8
-const int START_OPENING_PIN = 4;
 const int CHANGE_DIRECTION_PIN = 2;
 const int CLOSED_PIN = 3;
+const int EXIT_PIN = 4;
+const int ENTERING_PIN = 5;
+const int INSIDE_PIN = 6;
+const int OUTSIDE_PIN = 7;
 const int BAUDRATE = 9600;
 const int NBSTEPS = 4096;
 const int DEBOUNCE = 200;
@@ -26,6 +29,8 @@ int Step = 0;
 long steps = 0;
 boolean goingClockwise = true;
 boolean isRunning = false;
+boolean entering = false;
+boolean exiting = false;
 
 unsigned long reverseDirectionInterrupt;
 unsigned long lastStopInterrupt;
@@ -35,9 +40,12 @@ unsigned long lastTime;
 void setup(){
     Serial.begin(BAUDRATE);
     Serial.println("Demarrage...");
-    pinMode(START_OPENING_PIN, INPUT);
+    pinMode(ENTERING_PIN, INPUT);
+    pinMode(EXIT_PIN, INPUT);
     pinMode(CHANGE_DIRECTION_PIN, INPUT);
     pinMode(CLOSED_PIN, INPUT);
+    pinMode(INSIDE_PIN, OUTPUT);
+    pinMode(OUTSIDE_PIN, OUTPUT);
     attachInterrupt(0, reverseDirection, FALLING);
     attachInterrupt(1, stopIt, FALLING);
     for(int i=0; i<4; i++){
@@ -112,12 +120,25 @@ void setDirection(){
   }
 }
 
+boolean openingRequested(){
+  entering = (digitalRead(ENTERING_PIN) == LOW);
+  exiting = (digitalRead(EXIT_PIN) == LOW);
+  if (entering){
+    Serial.println("demande d'entree");
+  }
+  if (exiting){
+    Serial.println("demande de sortie");
+  }
+  return  (entering || exiting);
+}
 
 void loop(){  
   unsigned long now;
-  if ((isRunning == false) && (digitalRead(START_OPENING_PIN) == LOW)){
+  if ((isRunning == false) && openingRequested()){
     isRunning = true;
   }
+  digitalWrite(OUTSIDE_PIN, exiting);
+  digitalWrite(INSIDE_PIN, entering);
   do {
       now = micros();
       if((now - lastTime) >= STEPTIME){
@@ -125,6 +146,13 @@ void loop(){
         stepper();
       }
   } while(isRunning);
+  
+  if (entering){
+    Serial.println("entree completee");
+  }
+  if (exiting){
+    Serial.println("sortie completee");
+  }
 }
 
 
