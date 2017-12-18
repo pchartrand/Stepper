@@ -12,6 +12,7 @@ const int BAUDRATE = 9600;
 const int NBSTEPS = 100;
 const int DEBOUNCE = 200;
 const long STEPTIME = 5000;
+const long WAIT_WHEN_CHANGING_DIRECTION = 500000;
 const float stepAngle = 3.6;
 
 int arrayDefault[4] = {LOW, LOW, LOW, LOW};
@@ -62,8 +63,10 @@ void reverseDirection(){
   if (now > reverseDirectionInterrupt + DEBOUNCE){
     if(goingClockwise){
       Serial.println("<--");
+      delay(WAIT_WHEN_CHANGING_DIRECTION);
     }else{
       Serial.println("-->");
+      delay(WAIT_WHEN_CHANGING_DIRECTION);
     }
     goingClockwise = !goingClockwise;
   }
@@ -74,7 +77,7 @@ void stopIt(){
   unsigned long now = millis();
   if (now > lastStopInterrupt + DEBOUNCE){
     if(isRunning){
-      Serial.println(angle());
+      //Serial.println(angle());
       Serial.println("Arret\n");
       isRunning = false;
       goingClockwise = true;
