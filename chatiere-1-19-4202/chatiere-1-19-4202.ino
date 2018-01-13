@@ -10,9 +10,10 @@ const int INSIDE_PIN = 6;
 const int OUTSIDE_PIN = 7;
 const int BAUDRATE = 9600;
 const int NBSTEPS = 100;
-const int DEBOUNCE = 200;
+const int DEBOUNCE = 300;
 const long STEPTIME = 5000;
-const long WAIT_WHEN_CHANGING_DIRECTION = 500000;
+const long MAXTIME = 7000000;
+const long WAIT_WHEN_CHANGING_DIRECTION = 3000;
 const float stepAngle = 3.6;
 
 int arrayDefault[4] = {LOW, LOW, LOW, LOW};
@@ -37,6 +38,9 @@ unsigned long reverseDirectionInterrupt;
 unsigned long lastStopInterrupt;
 
 unsigned long lastTime;
+unsigned long startTime = 0;
+unsigned long startWait = 0;
+
 
 void setup(){
     Serial.begin(BAUDRATE);
@@ -61,14 +65,17 @@ float angle(){
 void reverseDirection(){
   unsigned long now = millis();
   if (now > reverseDirectionInterrupt + DEBOUNCE){
+    Serial.println("changement de direction"); 
     if(goingClockwise){
-      Serial.println("<--");
-      delay(WAIT_WHEN_CHANGING_DIRECTION);
+      Serial.println("anti-horaire");      
     }else{
-      Serial.println("-->");
-      delay(WAIT_WHEN_CHANGING_DIRECTION);
+      Serial.println("horaire");
     }
     goingClockwise = !goingClockwise;
+    //delay(WAIT_WHEN_CHANGING_DIRECTION);
+    isRunning = false;
+    Serial.println("debut de la pause");
+    startWait = now;
   }
   reverseDirectionInterrupt = now;
 }
@@ -78,7 +85,7 @@ void stopIt(){
   if (now > lastStopInterrupt + DEBOUNCE){
     if(isRunning){
       //Serial.println(angle());
-      Serial.println("Arret\n");
+      Serial.println("Arret");
       isRunning = false;
       goingClockwise = true;
     }
@@ -131,33 +138,61 @@ boolean openingRequested(){
   exiting = (digitalRead(EXIT_PIN) == LOW);
   if (entering){
     Serial.println("demande d'entree");
+    startTime = millis();
   }
   if (exiting){
     Serial.println("demande de sortie");
+    startTime = millis();
   }
   return  (entering || exiting);
 }
 
 void loop(){  
   unsigned long now;
-  if ((isRunning == false) && openingRequested()){
+  
+  if ((isRunning == false) && (startWait == 0) && openingRequested()){
+    startTime = micros();
     isRunning = true;
   }
+  
   digitalWrite(OUTSIDE_PIN, exiting);
   digitalWrite(INSIDE_PIN, entering);
   do {
       now = micros();
+      if ((startTime > 0) && (startWait == 0) && (now - startTime > MAXTIME) && isRunning) {
+        Serial.println("la porte prend trop de temps a s'ouvrir");
+        //isRunning = false;
+        startTime = 0;
+        if(goingClockwise){
+          reverseDirection();
+        }
+      }
       if((now - lastTime) >= STEPTIME){
         lastTime = now;
         stepper();
       }
   } while(isRunning);
-  
-  if (entering){
-    Serial.println("entree completee");
-  }
-  if (exiting){
-    Serial.println("sortie completee");
+
+  if ((isRunning == false) && (startWait > 0)){
+      //Serial.println("en pause");
+      unsigned long pauseTime = millis() - startWait;
+      if (pauseTime > WAIT_WHEN_CHANGING_DIRECTION ){
+        startWait = 0;
+        startTime = 0;
+        Serial.println("Fin de la pause");
+        isRunning = true;
+      }
+  }else{
+    if (entering){
+      Serial.println("entree completee\n");
+      startTime = 0;
+      startWait = 0;
+    }
+    if (exiting){
+      Serial.println("sortie completee\n");
+      startTime = 0;
+      startWait = 0;
+    }
   }
 }
 
