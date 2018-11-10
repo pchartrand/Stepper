@@ -13,7 +13,7 @@ const int NBSTEPS = 100;
 const int DEBOUNCE = 300;
 const long STEPTIME = 5000;
 const long MAXTIME = 7000000;
-const long WAIT_WHEN_CHANGING_DIRECTION = 3000;
+const long WAIT_WHEN_CHANGING_DIRECTION = 7000;
 const float stepAngle = 3.6;
 
 int arrayDefault[4] = {LOW, LOW, LOW, LOW};
